@@ -9,12 +9,12 @@ namespace MyShopAPI.Controllers
     [ApiController]
     public class AccountController : ControllerBase
     {
-        //public async Task<IActionResult> SignUP([FromBody] SignUpDTO signUpDTO)
-        //{
-        //    if (!ModelState.IsValid)
-        //    {
-        //        return BadRequest(ModelState);
-        //    }
-        //}
+        public async Task<IActionResult> SignUP([FromBody] SignUpDTO signUpDTO)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+        }
     }
 }
