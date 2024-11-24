@@ -1,11 +1,79 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using MyShopAPI.Core.AuthManager;
+using MyShopAPI.Core.EmailMananger;
+using MyShopAPI.Core.IRepository;
+using MyShopAPI.Core.Repository;
+using MyShopAPI.Data;
+using MyShopAPI.Data.Entities;
+using MyShopAPI.Services.Email;
+using MyShopAPI.Services.Models;
+using Newtonsoft.Json.Converters;
+using System.Reflection;
+using System.Text;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddDbContext<DatabaseContext>(option => option.UseSqlServer(builder.Configuration.GetConnectionString("sqlconnection")));
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddControllers()
+    .AddNewtonsoftJson(op =>
+    {
+        op.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+        op.SerializerSettings.Converters.Add(new StringEnumConverter());
+    });
+
+builder.Services.AddIdentity<Customer, IdentityRole>(option =>
+{
+    option.Password.RequireNonAlphanumeric = true;
+    option.Password.RequireDigit = true;
+    option.Password.RequireLowercase = true;
+    option.Password.RequireUppercase = true;
+
+    option.User.RequireUniqueEmail = true;
+    option.SignIn.RequireConfirmedEmail = true;
+    option.SignIn.RequireConfirmedAccount = true;
+});
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+   .AddJwtBearer(options =>
+   {
+       var jwtSettings = builder.Configuration.GetSection("Jwt");
+
+       options.RequireHttpsMetadata = true;
+       options.SaveToken = true;
+
+       options.TokenValidationParameters = new TokenValidationParameters
+       {
+           ValidateIssuer = true,
+           ValidateAudience = true,
+           ValidAudience = jwtSettings.GetSection("Issuer").Value,
+           ValidateLifetime = true,
+           ValidIssuer = jwtSettings.GetSection("Issuer").Value,
+           ValidateIssuerSigningKey = true,
+           IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("key")),
+           RequireExpirationTime = true,
+       };
+   });
+
+
+builder.Services.AddAutoMapper(Assembly.GetExecutingAssembly());
+builder.Services.AddTransient<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IEmailManager, EmailManager>();
+builder.Services.AddScoped<IAuthManager, AuthManager>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.Configure<SMTPConfig>(builder.Configuration.GetSection("SMTPConfig"));
 
 var app = builder.Build();
 
