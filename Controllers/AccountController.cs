@@ -68,5 +68,47 @@ namespace MyShopAPI.Controllers
 
             return Ok("Registration Successful!. Check your email for validation.");
         }
+
+        [HttpPost("confirm-email")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ConfirmUserEmail([FromQuery] string uid, [FromQuery] string token)
+        {
+            if (string.IsNullOrEmpty(uid) || string.IsNullOrEmpty(token))
+            {
+                return BadRequest();
+            }
+
+            var result = await _authManager.ConfirmEmailAsync(uid, token);
+
+            if (result.Succeeded)
+            {
+                return Ok();
+            }
+
+            return BadRequest();
+        }
+
+        [HttpPost("resend-confirmation-email")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ResendConfirmationEmail([FromQuery] string email)
+        {
+            if (string.IsNullOrEmpty(email))
+            {
+                return BadRequest();
+            }
+
+            var user = await _authManager.GetUserByEmailAsync(email);
+
+            if (user == null)
+            {
+                return BadRequest();
+            }
+
+            await _authManager.GenerateEmailConfirmationTokenAsync(user,user.FirstName, _configuration["AcctValidationEmail"]);
+            return Ok("Check your email for validation.");
+        }
     }
 }
