@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MyShopAPI.Core.AuthManager;
 using MyShopAPI.Core.EntityDTO.CustomerDTO;
-using MyShopAPI.Core.IRepository;
+using MyShopAPI.Core.Models;
 using MyShopAPI.Data.Entities;
 
 namespace MyShopAPI.Controllers
@@ -13,17 +13,13 @@ namespace MyShopAPI.Controllers
     {
         private readonly IMapper _mapper;
         private readonly IAuthManager _authManager;
-        private readonly IUnitOfWork _unitOfWork;
-        private readonly IWebHostEnvironment _env;
         private readonly IConfiguration _configuration;
 
-        public AccountController(IMapper mapper, IAuthManager authManager, IUnitOfWork unitOfWork, IWebHostEnvironment env, IConfiguration configuration)
+        public AccountController(IMapper mapper, IAuthManager authManager, IConfiguration configuration)
         {
             _mapper = mapper;
             _authManager = authManager;
-            _unitOfWork = unitOfWork;
             _configuration = configuration;
-            _env = env;
         }
 
         [HttpPost("signup")]
@@ -107,7 +103,7 @@ namespace MyShopAPI.Controllers
                 return BadRequest();
             }
 
-            await _authManager.GenerateEmailConfirmationTokenAsync(user,user.FirstName, _configuration["AcctValidationEmail"]);
+            await _authManager.GenerateEmailConfirmationTokenAsync(user, user.FirstName, _configuration["AcctValidationEmail"]);
             return Ok("Check your email for validation.");
         }
 
@@ -122,7 +118,7 @@ namespace MyShopAPI.Controllers
             {
                 return BadRequest(ModelState);
             }
-            
+
             var result = await _authManager.SignInUser(userDTO);
 
             if (!result.Succeeded)
@@ -130,7 +126,50 @@ namespace MyShopAPI.Controllers
                 return Unauthorized();
             }
 
-            return Accepted(new { token = await _authManager.CreateToken()});
+            return Accepted(new { token = await _authManager.CreateToken() });
+        }
+
+        [HttpPost("password-reset-email")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> SendPasswordResetEmail([FromQuery] string email)
+        {
+            if (string.IsNullOrEmpty(email))
+            {
+                return BadRequest();
+            }
+
+            var user = await _authManager.GetUserByEmailAsync(email);
+
+            if (user == null)
+            {
+                return BadRequest();
+            }
+
+            await _authManager.GenerateForgotPasswordTokenAsync(user, user.FirstName, _configuration["PasswordConfirmation"]);
+
+            return NoContent();
+        }
+
+        [HttpPost("reset-password")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPassword model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            var result = await _authManager.ResetPasswordAsync(model);
+
+            if (!result.Succeeded)
+            {
+                return BadRequest();
+            }
+
+            return Ok();
         }
     }
 }
