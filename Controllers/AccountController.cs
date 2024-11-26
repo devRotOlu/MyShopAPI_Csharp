@@ -110,5 +110,27 @@ namespace MyShopAPI.Controllers
             await _authManager.GenerateEmailConfirmationTokenAsync(user,user.FirstName, _configuration["AcctValidationEmail"]);
             return Ok("Check your email for validation.");
         }
+
+        [HttpPost]
+        [Route("login")]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status202Accepted)]
+        public async Task<IActionResult> LoginUser([FromBody] LoginDTO userDTO)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            
+            var result = await _authManager.SignInUser(userDTO);
+
+            if (!result.Succeeded)
+            {
+                return Unauthorized();
+            }
+
+            return Accepted(new { token = await _authManager.CreateToken()});
+        }
     }
 }
