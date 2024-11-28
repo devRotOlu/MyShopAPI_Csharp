@@ -107,7 +107,7 @@ builder.Services.AddSwaggerGen(
                         }
         });
 
-        c.SwaggerDoc("v1", new OpenApiInfo { Title = "ShepherdDeskAPI", Version = "v1" });
+        c.SwaggerDoc("v1", new OpenApiInfo { Title = "MyShopAPI", Version = "v1" });
     }
 );
 
